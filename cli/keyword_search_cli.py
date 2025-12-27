@@ -31,6 +31,7 @@ class InvertedIndex:
                         #print(f"match found with token {token}")
                         found = True
                         doc_list.add(doc_id)
+                        break
                         #print(f"added document to the list {doc_list}")
             if not found or len(self.index) == 0:
                 self.index[t] = set()
@@ -39,13 +40,16 @@ class InvertedIndex:
 
     def __get_documents(self,term):
         print(f"size of the index is {len(self.index)}")
+        searched_item=[]
         for token,doc_list in self.index.items():
             if term.lower() == token:
-                return doc_list.sort()
-        return []
+                print(f"found the token {token} and list of tokens {doc_list}" )
+                searched_item = list(doc_list)
+        return sorted(searched_item)
+        
     
     def build(self):
-        for m in MOVIE_DATABASE:
+        for m in MOVIE_DATABASE[4500:]:
             self.docmap[m["id"]] = m
             contat_string = f"{m['title']} {m['description']}"
             self.__add_document(m["id"],contat_string)
@@ -54,7 +58,7 @@ class InvertedIndex:
             pickle.dump(self.docmap,file)
         with open('cache/index.pkl','wb') as file:
             pickle.dump(self.index,file)
-        print(self.index)
+        print(f"First document for token 'merida' = {self.__get_documents("merida")[0]}")
 
 
 def pre_process_str(moviname:str) -> list[str]:
