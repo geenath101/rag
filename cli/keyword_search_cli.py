@@ -24,14 +24,18 @@ class InvertedIndex:
                 print(f"found the token {token} and list of tokens {doc_list}" )
                 searched_item = list(doc_list)
         return sorted(searched_item)
-        
+    
+    def load(self,fileName):
+        try:
+            with open(fileName,'rb') as file:
+                return pickle.load(file)
+        except FileNotFoundError:
+            print(f"File not found")
+    
     
     def build(self):
         for m in MOVIE_DATABASE:
-            self.docmap[m["id"]] = m
-        #contat_string = f"{m['title']} {m['description']}"
-        #self.__add_document(m["id"],contat_string)
-        # preparing data into tuples
+            self.docmap[m["id"]] = m['title']
         print(f"preparing tasks")
         tasks =[(m["id"],f"{m['title']} {m['description']}") for m in MOVIE_DATABASE]
         print(f"size of the task list {len(tasks)}")
@@ -87,16 +91,26 @@ def main() -> None:
             invered_index = InvertedIndex()
             invered_index.build()
         case "search":
-            print(f"Searching for: {args.query}")
-            search_items=[]
+            #print(f"Searching for: {args.query}")
             #json_file = open("data/movies.json") 
             #val = json.load(json_file)
             #movie_list = val["movies"]
-            for e in MOVIE_DATABASE:
-                if check_for_match(pre_process_str(args.query),pre_process_str(e["title"])):
-                    search_items.append(e)
-            for m in search_items[:5]:
-                print(f"{m["id"]}. {m["title"]}")
+            #for e in MOVIE_DATABASE:
+                #if check_for_match(pre_process_str(args.query),pre_process_str(e["title"])):
+                    #search_items.append(e)
+            invered = InvertedIndex()
+            invered.index = invered.load("cache/index.pkl")
+            invered.docmap = invered.load("cache/docmap.pkl")
+            query_list = pre_process_str(args.query)
+            #print(f"query index {query_list}")
+            total_document_list = []
+            for q in query_list:
+                 if invered.index.get(q) is not None:
+                    for i in invered.index.get(q):
+                         total_document_list.append(i)
+            total_document_list.sort()
+            for m in total_document_list[:5]:
+                print(f"{m}. {invered.docmap.get(m)['title']}")
         case _:
             parser.print_help()
 
