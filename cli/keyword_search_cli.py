@@ -5,39 +5,17 @@ import json
 import string
 import pickle
 from nltk.stem import PorterStemmer
-
+import collections
+from concurrent.futures import ProcessPoolExecutor
 
 STOP_WORD_LIST=[]
 MOVIE_DATABASE=""
 
 class InvertedIndex:
-    index={}
-    docmap={}
-    #def __init__(self,index,docmap):
-        #self.index = index
-        #self.docmap = docmap
-
-    #improve this more    
-    def __add_document(self,doc_id,text):
-        print(f"adding documents {doc_id}")
-        torkenized_list = pre_process_str(text)
-        found = False
-        for t in torkenized_list:
-            if len(self.index) > 0:
-                #print(f"size of the index is {len(self.index)}")
-                #print(f"idex values are {self.index}")
-                for token , doc_list in self.index.items():
-                    if t == token:
-                        #print(f"match found with token {token}")
-                        found = True
-                        doc_list.add(doc_id)
-                        break
-                        #print(f"added document to the list {doc_list}")
-            if not found or len(self.index) == 0:
-                self.index[t] = set()
-                self.index[t].add(doc_id)
-                found=False
-
+    def __init__(self):
+        self.index = collections.defaultdict(set)
+        self.docmap={}
+               
     def __get_documents(self,term):
         print(f"size of the index is {len(self.index)}")
         searched_item=[]
@@ -49,25 +27,40 @@ class InvertedIndex:
         
     
     def build(self):
-        for m in MOVIE_DATABASE[4500:]:
+        for m in MOVIE_DATABASE:
             self.docmap[m["id"]] = m
-            contat_string = f"{m['title']} {m['description']}"
-            self.__add_document(m["id"],contat_string)
+        #contat_string = f"{m['title']} {m['description']}"
+        #self.__add_document(m["id"],contat_string)
+        # preparing data into tuples
+        print(f"preparing tasks")
+        tasks =[(m["id"],f"{m['title']} {m['description']}") for m in MOVIE_DATABASE]
+        print(f"size of the task list {len(tasks)}")
+        with ProcessPoolExecutor() as executor:
+            results = executor.map(InvertedIndex._worker_process,tasks)
+        for doc_id,unique_tokens in results:
+            print(f"adding document {doc_id}")
+            for token in unique_tokens:
+                self.index[token].add(doc_id)
         print(f"saving documents in cahce")
         with open('cache/docmap.pkl','wb') as file:
             pickle.dump(self.docmap,file)
         with open('cache/index.pkl','wb') as file:
             pickle.dump(self.index,file)
-        print(f"First document for token 'merida' = {self.__get_documents("merida")[0]}")
+        #print(f"First document for token 'merida' = {self.__get_documents("merida")[0]}")
 
+    @staticmethod
+    def _worker_process(task):
+        doc_id, text = task
+        tokens = pre_process_str(text)
+        return doc_id, set(tokens)
+    
 
 def pre_process_str(moviname:str) -> list[str]:
-    stemmer = PorterStemmer()
-    mapping = str.maketrans("","",string.punctuation)
-    trans_str = moviname.lower().translate(mapping)
-    tokenized = trans_str.split()
-    return[ stemmer.stem(s) for s in tokenized if s not in STOP_WORD_LIST ]
-
+        stemmer = PorterStemmer()
+        mapping = str.maketrans("","",string.punctuation)
+        trans_str = moviname.lower().translate(mapping)
+        tokenized = trans_str.split()
+        return[ stemmer.stem(s) for s in tokenized if s not in STOP_WORD_LIST ]
 
 def check_for_match(query:list[str],title:list[str])->bool:
     for q in query:
@@ -82,7 +75,7 @@ def init_database():
     return val["movies"]
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Keyword Search CLI")
+    parser = argparse.ArgumentParser(description="Keyword Search CLI run simpel search by uv run cli/keyword_search_cli.py search 'movie name'")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     subparsers.add_parser("build",help="build the local index")
