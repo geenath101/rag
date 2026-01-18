@@ -12,7 +12,7 @@ from collections import Counter
 
 STOP_WORD_LIST=[]
 MOVIE_DATABASE=""
-BM25_K1=1.5
+BM25_K1 = 1.5
 BM25_B = 0.75
 
 
@@ -55,9 +55,7 @@ class InvertedIndex:
     def get_bm2f_tf(self,doc_id,term,k1=BM25_K1):
         tf = self.get_tf(doc_id,term)
         avg_doc_length = self.get_avg_doc_length()
-         # Length normalization factor
         length_norm = 1 - BM25_B + BM25_B * (self.doc_length[doc_id] / avg_doc_length)
-        # Apply to term frequency
         tfs = (tf * (k1 + 1)) / (tf + k1 * length_norm)
         #tfs = (tf * (k1 + 1)) / (tf + k1)
         return tfs
@@ -84,10 +82,13 @@ class InvertedIndex:
         #print(f"items in tern_frequency {self.tern_frequencies.get(doc_id)}")
         return self.tern_frequencies.get(doc_id)[term]
     
-    def get_bm25_idf(self, term: str) -> float:
+    def get_bm25_idf(self, q: str) -> float:
+        # IDF = log((N - df + 0.5) / (df + 0.5) + 1)
         n = len(self.docmap)
-        df = len(self.index.get(term))
-        return math.log((n - df + 0.5) / (df + 0.5) + 1)
+        df = len(self.index.get(q))
+        #print(f"total documents {n}")
+        #print(f"document frquency {df}")
+        return math.log(((n - df + 0.5) / (df + 0.5)) + 1)
     
 
     def get_avg_doc_length(self) -> float:
@@ -97,25 +98,28 @@ class InvertedIndex:
         return total/len(self.doc_length)
 
 
-    def get_bm2f(self,doc_id,term):
-        tfs = self.get_bm2f_tf(doc_id,term)
-        # no need to calculate idf for each doc
-        idf = self.get_bm25_idf(term)
-        return tfs * idf
+    # def get_bm2f(self,doc_id,term):
+    #     tfs = self.get_bm2f_tf(doc_id,term)
+    #     # no need to calculate idf for each doc
+    #     idf = self.get_bm25_idf(term)
+    #     return tfs * idf
     
     def bm25_search(self, query, limit):
         tq = pre_process_str(query)
         scores = {}
         for q in tq:
             _idf = self.get_bm25_idf(q)
+            #print(f"inverse document frequency ====> {_idf}")
             for d in self.index[q]:
-                sc = _idf * self.get_bm2f_tf(d,q)
+                tf = self.get_bm2f_tf(d,q)
+                #print(f" term frequency ===> {tf}")
+                sc = _idf * tf
                 if d not in scores:
                     scores[d] = sc
                 else:
-                    print(f"accumilating already existing id ")
+                    #print(f"accumilating already existing id ")
                     scores[d] = scores.get(d) + sc
-        sorted_scores = sorted(scores.items(),key=lambda item:item[1])
+        sorted_scores = sorted(scores.items(),key=lambda item:item[1],reverse=True)
         return sorted_scores[:4]
         
 
@@ -225,9 +229,12 @@ def main() -> None:
             print(f"TF-IDF score of '{args.term}' in document '{args.id}': {tf_idf:.2f}")
         case "bm25idf":
             i = InvertedIndex()
-            term = pre_process_str(args.term)
-            bm25idf = i.get_bm25_idf(term[0])
-            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+            i.index = i.load("cache/index.pkl")
+            i.doc_length = i.load("cache/doc_length.pkl")
+            i.docmap = i.load("cache/docmap.pkl")
+            q = pre_process_str(args.term)
+            bm25idf = i.get_bm25_idf(q[0])
+            print(f"BM25 IDF score of '{q[0]}': {bm25idf:.2f}")
         case "bm25tf":
             i = InvertedIndex()
             i.index = i.load("cache/index.pkl")
@@ -242,8 +249,12 @@ def main() -> None:
             i.index = i.load("cache/index.pkl")
             i.tern_frequencies = i.load("cache/term_frequencies.pkl")
             i.doc_length = i.load("cache/doc_length.pkl")
+            i.docmap = i.load("cache/docmap.pkl")
             sorted_scores = i.bm25_search(args.query,5)
-            print(f"sorted_scores {sorted_scores}")
+            #(15) The Adventures of Mowgli - Score: 7.79
+            for item in sorted_scores:
+             print(f"- {i.docmap.get(item[0])['title']}")
+             print(f"- {item[1]:.2f}")
         case _:
             parser.print_help()
 
