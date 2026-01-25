@@ -165,9 +165,6 @@ def main() -> None:
     tfidf_parser.add_argument("id",type=int,help="id")
     tfidf_parser.add_argument("term", type=str, help="term")
 
-    bm25idf_parser = subparsers.add_parser("bm25idf", help="return bm25idf value")
-    bm25idf_parser.add_argument("term",type=str,help="term")
-    
     bm25_tf_parser = subparsers.add_parser(
     "bm25tf", help="Get BM25 TF score for a given document ID and term"
     )
