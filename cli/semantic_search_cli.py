@@ -8,6 +8,7 @@ from lib.semantic_search import embed_text
 from lib.semantic_search import verify_embeddings
 from lib.semantic_search import embed_query_text
 from lib.semantic_search import search_query
+from lib.semantic_search import do_chunking
 
 
 def main():
@@ -27,7 +28,10 @@ def main():
     search.add_argument( "--limit", type=int, default=5, 
         help="Maximum number of results (default: 5)"
     )
-
+    chunk = subparsers.add_parser("chunk",help="chunk")
+    chunk.add_argument("query",type=str,help="text need to be chunked")
+    chunk.add_argument("--chunk-size",type=int,default=200)
+    chunk.add_argument("--overlap",type=int,default=200)
     args = parser.parse_args()
 
     match args.command:
@@ -41,6 +45,21 @@ def main():
             embed_query_text(args.query)
         case "search":
             search_query(args.query,5)
+        case "chunk":
+            result = do_chunking(args.query,args.chunk_size)
+            #print(f"size of the result set ... {result}")
+            print(f"Chunking {len(args.query)} characters")
+            overlap_value = args.overlap
+            for i,r in enumerate(result):
+                #print(f"current iterating item {r}")
+                overlap_items = []
+                if overlap_value > 0 and i > 0:
+                    _p = result[i-1]
+                    #print(f" previous item  {_p}")
+                    overlap_items = _p[-overlap_value:]
+                #print(f"over lapped values {overlap_items}")
+                overlap_items.extend(r)
+                print(f"{i+1}. {" ".join(overlap_items)}")
         case _:
             parser.print_help()
 

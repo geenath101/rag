@@ -41,16 +41,6 @@ class SemanticSearch:
             return self.build_embeddings(documents)
         
     def search(self, query, limit):
-        """
-        1. Spaceflight IC-1: An Adventure in Space (score: 0.4406)
-        The opening narrative is given by a man in a high ranking military uniform. He tells us the film is ...
-
-        2. Adventureland (score: 0.4150)
-        In 1987, James Brennan (Jesse Eisenberg) has two plans. The first plan is to have a summer vacation ...
-
-        3. Odyssey 5 (score: 0.4038)
-        The story follows six people on a routine flight of the space shuttle Odyssey, on August 7, 2007: fo...
-        """
         search_temp = []
         if self.embeddings is not None:
             emb_query = self.generate_embeddings(query)
@@ -71,6 +61,36 @@ class SemanticSearch:
             print(f"{_description}")
             print(f"")
                   
+
+def do_chunking(query,chunk_size):
+    qury_list = query.split(" ")
+    """
+        imprative approch to grouping
+    """
+    # f, h = divmod(len(qury_list),chunk_size)
+    # group_count = f + 1 if h > 0 else f
+    # group_list = []
+    # print(f"group count is ... {group_count}")
+    # for gnumber in range(group_count):
+    #     g = []
+    #     starting_index = gnumber * chunk_size
+    #     for i in range(chunk_size):
+    #         access_index = starting_index + i
+    #         if access_index < len(qury_list):
+    #             g.append(qury_list[access_index])
+    #     group_list.append(g)
+    # print(f" group list ......... {group_list}")
+    group_list = []
+    for c in chunk_list(qury_list,chunk_size):
+        group_list.append(c)
+    return group_list
+    
+
+def chunk_list(data_list,chunk_size):
+    for i in range(0,len(data_list),chunk_size):
+        yield data_list[i: i + chunk_size]
+
+
 
 
 def search_query(query,limit):
