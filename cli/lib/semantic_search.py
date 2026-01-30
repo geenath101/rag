@@ -1,6 +1,7 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
+import re
 import json
 
 class SemanticSearch:
@@ -62,7 +63,12 @@ class SemanticSearch:
             print(f"")
                   
 
-def do_chunking(query,chunk_size):
+def do_semantic_chunking(query,chunk_size):
+    sentence_list = re.split(r"(?<=[.!?])\s+",query)
+    #print(f"list of sentences.... {sentence_list}")
+    return sentence_list
+
+def do_random_chunking(query,chunk_size):
     qury_list = query.split(" ")
     """
         imprative approch to grouping

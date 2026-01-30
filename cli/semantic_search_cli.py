@@ -8,8 +8,8 @@ from lib.semantic_search import embed_text
 from lib.semantic_search import verify_embeddings
 from lib.semantic_search import embed_query_text
 from lib.semantic_search import search_query
-from lib.semantic_search import do_chunking
-
+from lib.semantic_search import do_random_chunking
+from lib.semantic_search import do_semantic_chunking
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Search CLI")
@@ -25,13 +25,17 @@ def main():
 
     search = subparsers.add_parser("search", help="search")
     search.add_argument("query",type=str,help="query")
-    search.add_argument( "--limit", type=int, default=5, 
-        help="Maximum number of results (default: 5)"
-    )
+    search.add_argument( "--limit", type=int, default=5, help="Maximum number of results (default: 5)")
+    
     chunk = subparsers.add_parser("chunk",help="chunk")
     chunk.add_argument("query",type=str,help="text need to be chunked")
     chunk.add_argument("--chunk-size",type=int,default=200)
     chunk.add_argument("--overlap",type=int,default=200)
+
+    sementic_search = subparsers.add_parser("semantic_chunk",help="sementic chunking")
+    sementic_search.add_argument("query",type=str,help="query")
+    sementic_search.add_argument("--max-chunk-size",type=int,help="max chunk size")
+    sementic_search.add_argument("--overlap",type=int,help="overlap")
     args = parser.parse_args()
 
     match args.command:
@@ -46,7 +50,7 @@ def main():
         case "search":
             search_query(args.query,5)
         case "chunk":
-            result = do_chunking(args.query,args.chunk_size)
+            result = do_random_chunking(args.query,args.chunk_size)
             #print(f"size of the result set ... {result}")
             print(f"Chunking {len(args.query)} characters")
             overlap_value = args.overlap
@@ -60,6 +64,8 @@ def main():
                 #print(f"over lapped values {overlap_items}")
                 overlap_items.extend(r)
                 print(f"{i+1}. {" ".join(overlap_items)}")
+        case"semantic_chunk":
+            result = do_semantic_chunking(args.query,args.max_chunk_size)
         case _:
             parser.print_help()
 
