@@ -2,7 +2,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 import re
-import json
+
 
 class SemanticSearch:
     def __init__(self):
@@ -16,20 +16,21 @@ class SemanticSearch:
             raise ValueError("Text cannot be empty.")
         return self.model.encode(text)
     
-    def build_embeddings(self,documents):
-        self.documents = documents
+    def build_embeddings(self):
         doc_list_as_str  = []
-        for d in self.documents:
+        for d in self.documents["movies"]:
             self.document_map[d["id"]] = d
             doc_list_as_str.append(f"{d['title']}: {d['description']}")
         self.embeddings = self.model.encode(sentences=doc_list_as_str,show_progress_bar=True)
         np.save("cache/movie_embeddings.npy",self.embeddings)
         return self.embeddings
     
-    def load_or_create_embeddings(self,documents):
+    def load_doc_and_doc_map(self,documents):
         self.documents = documents
         for d in self.documents:
-            self.document_map[d['id']] = d
+            self.document_map[d['d']] = d
+    
+    def load_or_create_embeddings(self):
         try:
             if os.path.exists("cache/movie_embeddings.npy"):
                 self.embeddings = np.load("cache/movie_embeddings.npy")
@@ -39,7 +40,7 @@ class SemanticSearch:
             return self.embeddings
         else:
             print(f" document sizes are not equal ")
-            return self.build_embeddings(documents)
+            return self.build_embeddings()
         
     def search(self, query, limit):
         search_temp = []
@@ -63,12 +64,26 @@ class SemanticSearch:
             print(f"")
                   
 
-def do_semantic_chunking(query,chunk_size):
+def do_semantic_chunking(query,chunk_size,overlap_value):
     sentence_list = re.split(r"(?<=[.!?])\s+",query)
-    #print(f"list of sentences.... {sentence_list}")
-    return sentence_list
+    final_list = []
+    do_chunking_and_overlap(final_list,sentence_list,chunk_size,overlap_value)
+    return final_list
 
-def do_random_chunking(query,chunk_size):
+def do_chunking_and_overlap(final_list,sentence_list,chunk_size,overlap_value):
+    group_list = []
+    for itemList in chunk_list(sentence_list,chunk_size):
+        group_list.append(itemList)
+    overlaped_list = do_overlap(group_list,overlap_value)
+    for item in overlaped_list:
+        if len(item) > chunk_size:
+            do_chunking_and_overlap(final_list,item,chunk_size,overlap_value)
+        else:
+            final_list.append(item)
+   
+            
+
+def do_random_chunking(query,chunk_size,overlap_value):
     qury_list = query.split(" ")
     """
         imprative approch to grouping
@@ -89,14 +104,25 @@ def do_random_chunking(query,chunk_size):
     group_list = []
     for c in chunk_list(qury_list,chunk_size):
         group_list.append(c)
-    return group_list
+    over_lapped_items = do_overlap(group_list,overlap_value)
+    return over_lapped_items
     
 
 def chunk_list(data_list,chunk_size):
     for i in range(0,len(data_list),chunk_size):
         yield data_list[i: i + chunk_size]
 
-
+def do_overlap(result,overlap_value):
+    complete_list = []
+    for i,r in enumerate(result):
+        overlap_items = []
+        if overlap_value is not None and overlap_value > 0 and i > 0:
+            _p = result[i-1]
+            overlap_items = _p[-overlap_value:]    
+        overlap_items.extend(r)
+        complete_list.append(overlap_items)
+        
+    return complete_list
 
 
 def search_query(query,limit):
@@ -119,14 +145,13 @@ def embed_query_text(query):
     print(f"First 5 dimensions: {embedding[:5]}")
     print(f"Shape: {embedding.shape}")
 
-def verify_embeddings():
+def verify_embeddings(documents):
     sm = SemanticSearch()
-    with open("data/movies.json") as file:
-        documents = json.load(file)
-        embeddings = sm.load_or_create_embeddings(documents["movies"])
-        print(f"Number of docs:   {len(documents["movies"])}")
-        print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
-    return sm
+    sm.load_doc_and_doc_map(documents)
+    embeddings = sm.load_or_create_embeddings()
+    print(f"Number of docs:   {len(documents["movies"])}")
+    print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+    
 
 def verify_model():
     sm = SemanticSearch()
@@ -135,7 +160,7 @@ def verify_model():
 
 def embed_text(text):
     sm = SemanticSearch()
-    embedding = sm.generate_embeddings(text) 
+    embedding = sm.generate_embeddings(text)
     print(f"Text: {text}")
     print(f"First 3 dimensions: {embedding[:3]}")
     print(f"Dimensions: {embedding.shape[0]}")

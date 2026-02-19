@@ -250,8 +250,8 @@ def main() -> None:
             sorted_scores = i.bm25_search(args.query,5)
             #(15) The Adventures of Mowgli - Score: 7.79
             for item in sorted_scores:
-             print(f"- {i.docmap.get(item[0])['title']}")
-             print(f"- {item[1]:.2f}")
+                print(f"- {i.docmap.get(item[0])['title']}")
+                print(f"- {item[1]:.2f}")
         case _:
             parser.print_help()
 

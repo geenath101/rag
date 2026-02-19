@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-
+import os
+import json
 from lib.semantic_search import SemanticSearch
 from lib.semantic_search import verify_model
 from lib.semantic_search import embed_text
@@ -44,30 +45,27 @@ def main():
         case "embed_text":
             embed_text(args.query)
         case "verify_embeddings":
-            verify_embeddings()
+            with open('data/movies.json') as file:
+                document = json.load(file)
+                verify_embeddings(document)
         case "embedquery":
             embed_query_text(args.query)
         case "search":
             search_query(args.query,5)
         case "chunk":
-            result = do_random_chunking(args.query,args.chunk_size)
-            #print(f"size of the result set ... {result}")
+            result = do_random_chunking(args.query,args.chunk_size,args.overlap)
             print(f"Chunking {len(args.query)} characters")
-            overlap_value = args.overlap
-            for i,r in enumerate(result):
-                #print(f"current iterating item {r}")
-                overlap_items = []
-                if overlap_value > 0 and i > 0:
-                    _p = result[i-1]
-                    #print(f" previous item  {_p}")
-                    overlap_items = _p[-overlap_value:]
-                #print(f"over lapped values {overlap_items}")
-                overlap_items.extend(r)
-                print(f"{i+1}. {" ".join(overlap_items)}")
+            printResults(result)
         case"semantic_chunk":
-            result = do_semantic_chunking(args.query,args.max_chunk_size)
+            print(f"Semantically chunking {len(args.query)} characters")
+            result = do_semantic_chunking(args.query,args.max_chunk_size,args.overlap)
+            printResults(result)
         case _:
             parser.print_help()
+
+def printResults(result):
+    for i,r in enumerate(result):
+        print(f"{i+1}. {" ".join(r)}")   
 
 if __name__ == "__main__":
     main()
